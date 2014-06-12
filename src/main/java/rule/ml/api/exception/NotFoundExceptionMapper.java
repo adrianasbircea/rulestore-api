@@ -12,17 +12,13 @@ import javax.ws.rs.ext.Provider;
  *  
  * @author Adriana
  */
-@Provider
-public class BadRequestExceptionMapper implements ExceptionMapper<NotFoundException> {
+public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundException> {
 
 	/**
 	 * An html message explaining that the URL is not well-formed.
 	 */
-	public final String BAD_REQUEST_MSG = "<html><head><title>400 Bad Request</title></head></html>";
     @Override
     public Response toResponse(NotFoundException exception) {
-    	ResponseBuilder builder = Response.status(Status.BAD_REQUEST)/*.entity(BAD_REQUEST_MSG)*/;
-//    	builder.header("Content-Type", "text/html");
-    	return builder.build();
+    	return Response.status(Status.NOT_FOUND).build();
     }
 }

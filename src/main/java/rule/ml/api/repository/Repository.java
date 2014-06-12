@@ -1,6 +1,5 @@
 package rule.ml.api.repository;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,15 +25,11 @@ public class Repository {
 	/**
 	 * Repository's name.
 	 */
-	private String name;
+	private Name name;
 	/**
 	 * The description of the repository.
 	 */
 	private String description;
-	/**
-	 * The language.
-	 */
-	private String language;
 	/**
 	 * The rulesets from the repository. A repository can have 1 or more rulesets.
 	 */
@@ -56,7 +51,7 @@ public class Repository {
 	 * @param description 	The repository's description.
 	 * @param rulesets		The list with rulesets. It must contains at least on ruleset.
 	 */
-	public Repository(String id, String name, String description, List<Ruleset> rulesets) {
+	public Repository(String id, Name name, String description, List<Ruleset> rulesets) {
 		this.id = id;
 		this.name = name;
 		this.description = description;
@@ -90,7 +85,7 @@ public class Repository {
 	 * @return The name of the repository.
 	 */
 	@XmlElement(name="name")
-	public String getName() {
+	public Name getName() {
 		return name;
 	}
 	
@@ -99,7 +94,7 @@ public class Repository {
 	 * 
 	 * @param name The new name of the repository.
 	 */
-	public void setName(String name) {
+	public void setName(Name name) {
 		this.name = name;
 	}
 	/**
@@ -120,23 +115,7 @@ public class Repository {
 	public void setDescription(String description) {
 		this.description = description;
 	}
-	/**
-	 * Obtain the language.
-	 * 
-	 * @return the language.
-	 */
-	@XmlElement(name="language")
-	public String getLanguage() {
-		return language;
-	}
-	/**
-	 * Set the language.
-	 * 
-	 * @param language the language to set.
-	 */
-	public void setLanguage(String language) {
-		this.language = language;
-	}
+
 	/**
 	 * Obtain the list of rulesets. It cannot be an empty list because the 
 	 * repository must have at least one ruleset.

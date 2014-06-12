@@ -5,7 +5,7 @@ import java.util.Set;
 
 import javax.ws.rs.core.Application;
 
-import rule.ml.api.exception.BadRequestExceptionMapper;
+import rule.ml.api.exception.NotFoundExceptionMapper;
 
 /**
  * Main application. It creates the database connection and return the providers and
@@ -23,7 +23,7 @@ public class MainApplication extends Application {
 	public MainApplication() {
 		// Start DB
 		classes.add(RepositoryService.class);
-		classes.add(BadRequestExceptionMapper.class);
+		classes.add(NotFoundExceptionMapper.class);
 		
 	}
 	@Override

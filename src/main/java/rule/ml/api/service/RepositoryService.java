@@ -1,13 +1,15 @@
 package rule.ml.api.service;
 
-import java.io.FileNotFoundException;
-import java.net.URISyntaxException;
 import java.util.List;
 
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -20,13 +22,11 @@ import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
-import org.hibernate.validator.method.MethodConstraintViolationException;
 import org.jboss.resteasy.plugins.validation.hibernate.ValidateRequest;
-
-import com.sun.istack.NotNull;
+import org.xmldb.api.base.ErrorCodes;
+import org.xmldb.api.base.XMLDBException;
 
 import rule.ml.api.database.ExistDAO;
-import rule.ml.api.exception.BadRequestExceptionMapper;
 import rule.ml.api.http.HTTPStatusCodes;
 import rule.ml.api.repository.Repository;
 import rule.ml.api.repository.Store;
@@ -50,29 +50,34 @@ public class RepositoryService {
 	 * @return A HTTP {@link Response} containing the repositories or one of the errors:
 	 * - HTTP 404 Not Found if the store does not contain any repository
 	 * - HTTP 400 Bad Request if the URL contains invalid parameters.
-	 * - HTTP 405 Method Not Allowed if a resource is requested using an HTTP 
-	 * 	 method different from the necessary one.
+	 * - HTTP 500 Internal Server Error if an error occurs while retrieving the data is encountered.
+	 * 
+	 * @throws Exception If one of the specified errors occurred. 
 	 */
 	@GET
 	@Path("/{storeID}/repositories")
-	@Consumes (MediaType.APPLICATION_XML)
 	@Produces(MediaType.APPLICATION_XML)
 	public Response getAllRepositories(
 			@PathParam("storeID") String storeID,
-			@DefaultValue("") @QueryParam("token") String token) {
+			@DefaultValue("") @QueryParam("token") String token) throws Exception {
 		try {
-			Store store = new Store();
 			// Set all the repositories for the current store
 			List<Repository> repositories = ExistDAO.getRepositories(storeID);
+			if (repositories.isEmpty()) {
+				throw new NotFoundException();
+			}
+			Store store = new Store();
 			store.setRepos(repositories);
 			// Set the store object to the response
 			return Response.status(200).entity(store).build();
 		} catch (Exception e) {
-			throw new NotFoundException();
+			if (e instanceof XMLDBException) {
+				throw getException(((XMLDBException) e));
+			}
+			throw e;
 		}
-		
 	}
-	
+
 	/**
 	 * Handles HTTP {@link Request}s like:
 	 * - GET /[store_id]/repositories/[repository_id]
@@ -85,21 +90,32 @@ public class RepositoryService {
 	 * @return A HTTP {@link Response} containing the repository with the given ID or one of the errors:
 	 * - HTTP 404 Not Found if the store does not contain any repository
 	 * - HTTP 400 Bad Request if the URL contains invalid parameters.
-	 * - HTTP 405 Method Not Allowed if a resource is requested using an HTTP 
-	 * 	 method different from the necessary one.
+	 * - HTTP 500 Internal Server Error if an error occurs while retrieving the data is encountered.
+	 * 
+	 * @throws Exception If one of the specified errors occurred. 
 	 */
 	@GET
-	@Consumes (MediaType.APPLICATION_XML)
 	@Produces(MediaType.APPLICATION_XML)
 	@Path("/{storeID}/repositories/{repositoryID}")
 	public Response getRepositoryByID(
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryID") String repositoryID,
-			@DefaultValue("") @QueryParam("token") String token) {
-
-		String response = "Store ID: " +  storeID + "repository ID " + repositoryID + " authentication: " + token;
-
-		return Response.status(200).entity(response).build();
+			@DefaultValue("") @QueryParam("token") String token) throws Exception {
+		try {
+			// Set all the repositories for the current store
+			Repository repository = ExistDAO.getRepositoryWithID(storeID, repositoryID);
+			if (repository != null) {
+				// Set the repository object to the response
+				return Response.status(200).entity(repository).build();
+			} else {
+				throw new NotFoundException("Repository with ID " + repositoryID + " could not be found.");
+			}
+		} catch (Exception e) {
+			if (e instanceof XMLDBException) {
+				throw getException(((XMLDBException) e));
+			}
+			throw e;
+		}
 	}
 	
 	/**
@@ -111,23 +127,38 @@ public class RepositoryService {
 	 * @param repositoryName 	The repository(ies) name.
 	 * @param token				The authentication code necessary to access the store.
 	 * 
-	 * @return A HTTP {@link Response} containing the repository(ies) with the given name or one of the errors:
+	 * @return A HTTP {@link Response} containing the repository with the given ID or one of the errors:
 	 * - HTTP 404 Not Found if the store does not contain any repository
 	 * - HTTP 400 Bad Request if the URL contains invalid parameters.
-	 * - HTTP 405 Method Not Allowed if a resource is requested using an HTTP 
-	 * 	 method different from the necessary one.
+	 * - HTTP 500 Internal Server Error if an error occurs while retrieving the data is encountered.
+	 * 
+	 * @throws Exception If one of the specified errors occurred. 
 	 */
 	@GET
 	@Path("/{storeID}/repositories/name/{repositoryName}")
-	@Consumes(MediaType.APPLICATION_XML)
 	@Produces(MediaType.APPLICATION_XML)
 	public Response getRepositoryByName(
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryName") String repositoryName,
-			@DefaultValue("") @QueryParam("token") String token) {
-		String response = "Store ID: " +  storeID + "repository name " + repositoryName + " authentication: " + token;
-
-		return Response.status(200).entity(response).build();
+			@DefaultValue("") @QueryParam("token") String token,
+			@DefaultValue("en") @HeaderParam("Accept-language") String language) throws Exception {
+		try {
+			// Set all the repositories for the current store
+			List<Repository> repositories = ExistDAO.getRepositoriesWithName(storeID, repositoryName, language);
+			if (repositories.isEmpty()) {
+				throw new NotFoundException();
+			}
+			Store store = new Store();
+			store.setRepos(repositories);
+			// Set the store object to the response
+			return Response.status(200).entity(store).build();
+		} catch (Exception e) {
+			if (e instanceof XMLDBException) {
+				throw getException(((XMLDBException) e));
+			}
+			throw e;
+		}
+	
 	}
 	
 	/**
@@ -144,54 +175,56 @@ public class RepositoryService {
 	 *   
 	 * @param storeID 			The ID of the store.
 	 * @param token				The authentication code necessary to access the store.
+	 * @param name				The name of the repository.
+	 * @param description 		The description (metadata) of the repository.
+	 * @param lang				The language of the repository. It is optionally.
 	 * 
-	 * @return A HTTP {@link Response} containing the repository location and 
-	 * 		   201 Created status or one of the errors:
+	 * @return A HTTP {@link Response} containing the repository location (HTTP 
+	 * 			Header Location) and a 201 Created status code or one of the errors:
 	 * - HTTP 404 Not Found if the store with the given ID is not found
 	 * - HTTP 400 Bad Request if the URL contains invalid parameters.
-	 * - HTTP 401 Unauthorized 
+	 * - HTTP 401 Unauthorized TODO
 	 * - HTTP 500 Internal Server Error if the  repository could not be created
-	 * - HTTP 511 Network Authentication Required  ?! when the user is not authentificated
-	 * TODO ? - cod de eroare atunci cand userul nu are acces la store-ul respectiv sau cand resursa nu poate fi creata
+	 * 
 	 */
 	@POST
-	@Consumes (MediaType.APPLICATION_XML)
-	@Produces(MediaType.APPLICATION_XML)
 	@Path("/{storeID}/repositories")
 	@ValidateRequest
 	public Response createNewRepository(
 			@PathParam("storeID") String storeID,
 			@DefaultValue("") @QueryParam("token") String token,
 			@NotNull @QueryParam("name") String name,
-			@NotNull @QueryParam("description") String description) {
+			@NotNull @QueryParam("description") String description,
+			@DefaultValue("en") @QueryParam("lang") String lang) throws Exception {
 		if (name == null || description == null) {
-			throw new NotFoundException();
+			throw new BadRequestException();
 		}
-		HTTPStatusCodes statusCode = HTTPStatusCodes.CREATED;
 		String newReposRelativeURI = null;
 		try {
-			newReposRelativeURI = ExistDAO.createNewRepository(storeID);
+			newReposRelativeURI = ExistDAO.createNewRepository(storeID, name, description, lang);
 			if (newReposRelativeURI != null) {
-				
+				ResponseBuilder builder = Response.status(HTTPStatusCodes.CREATED.getStatusCode());
+				builder.header("Location", Constants.urlPrefix + newReposRelativeURI);
+				return builder.build();
 			} else {
-				System.out.println("??????");
-				statusCode = HTTPStatusCodes.INTERNAL_SERVER_ERROR;
+				throw new InternalServerErrorException("Resource could not be created");
 			}
-		} catch (FileNotFoundException e) {
-			statusCode = HTTPStatusCodes.NOT_FOUND;
+		} catch (Exception e) {
+			e.printStackTrace();
+			if (e instanceof XMLDBException) {
+				throw getException((XMLDBException) e);
+			} else if (e instanceof NotFoundException) {
+				throw e;
+			}
+			
+			throw new InternalServerErrorException(e);
 		}
 
-		ResponseBuilder builder = Response.status(statusCode.getStatusCode())/*.entity(BAD_REQUEST_MSG)*/;
-		if (newReposRelativeURI != null) {
-			builder.header("Location", Constants.urlPrefix + newReposRelativeURI);
-		}
 		
-    	return builder.build();
 	}
-	
 
 	/**
-	 * For JSON format requests, send an 501 Not Implemented message. 
+	 * For JSON format requests, send a 501 Not Implemented message. 
 	 * 
 	 * @return A {@link Response} containing a 501 Not Implemented status code.
 	 */
@@ -200,10 +233,41 @@ public class RepositoryService {
 	@PUT
 	@DELETE
 	@Path("/{storeID}/repositories")
-	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes (MediaType.APPLICATION_JSON)
+	@Produces({MediaType.APPLICATION_JSON, "application/prolog"})
+	@Consumes ({MediaType.APPLICATION_JSON, "application/prolog"})
 	public Response getJSONRepresentation() {
-		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).
-				entity(HTTPStatusCodes.NOT_IMPLEMENTED.getDescription()).build();
+		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).build();
+	}
+	
+	/**
+	 * Returns an exception for the error code from the given exception.
+	 * 
+	 * @param e The initial exception.
+	 * 
+	 * @return An exception depending on the error code from the given exception.
+	 */
+	private Exception getException(XMLDBException e) {
+		e.printStackTrace();
+		int errorCode = e.errorCode;
+		if (errorCode == ErrorCodes.VENDOR_ERROR ||
+				errorCode == ErrorCodes.COLLECTION_CLOSED ||
+				errorCode == ErrorCodes.UNKNOWN_ERROR) {
+			// DB not working
+			return new InternalServerErrorException();
+		} else if (errorCode == ErrorCodes.NO_SUCH_COLLECTION ||
+				errorCode == ErrorCodes.NO_SUCH_DATABASE ||
+				errorCode == ErrorCodes.NO_SUCH_RESOURCE ||
+				errorCode == ErrorCodes.NO_SUCH_SERVICE || 
+				errorCode == ErrorCodes.INVALID_COLLECTION ||
+				errorCode == ErrorCodes.INVALID_DATABASE ||
+				errorCode == ErrorCodes.INVALID_RESOURCE) {
+			// Resource not found or invalid
+			return new NotFoundException();
+		} else if (errorCode == ErrorCodes.INVALID_URI) {
+			return new BadRequestException();
+		} else {
+			// Unknown error code, so show an error
+			return e;
+		}
 	}
 }
