@@ -1,11 +1,13 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 
@@ -34,32 +36,24 @@ public class ParameterPanel extends JPanel {
 	 */
 	public ParameterPanel() {
 		setOpaque(false);
-		setLayout(new GridBagLayout());
-		GridBagConstraints constr = new GridBagConstraints();
+		GridLayout gridBagLayout = new GridLayout(1, 2, 7, 2);
+		setLayout(gridBagLayout);
 		// Param name
-		constr.gridx = 0;
-		constr.gridy = 0;
-		constr.insets = new Insets(1, 2, 1, 5);
-		constr.fill = GridBagConstraints.BOTH;
-		constr.weightx = 0.3;
-		constr.weighty = 1.0;
 		name = new PlaceholderTextField("");
 		name.setPlaceholder("Name");
 		name.setFont(new Font(name.getFont().getFontName(), name.getFont().getStyle(), 
 				name.getFont().getSize() + 3));
-		add(name, constr);
+		add(name);
 		
 		// Param value
-		constr.gridx ++;
-		constr.fill = GridBagConstraints.BOTH;
-		constr.weightx = 0.7;
-		constr.weighty = 1.0;
 		value = new PlaceholderTextField("");
 		value.setPlaceholder("Value");
 		value.setFont(new Font(value.getFont().getFontName(), value.getFont().getStyle(), value.getFont().getSize() + 3));
-		add(value, constr);
+		add(value);
 		setMinimumSize(new Dimension(getPreferredSize().width, 30));
 		setPreferredSize(new Dimension(getPreferredSize().width, 30));
+		name.setFocusable(true);
+		name.requestFocus();
 	}
 	
 	/**

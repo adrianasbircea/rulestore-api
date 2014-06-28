@@ -1,6 +1,8 @@
 package rule.ml.api.service;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.BadRequestException;
@@ -8,7 +10,6 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
@@ -17,6 +18,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
@@ -30,10 +33,10 @@ import rule.ml.api.database.ExistDAO;
 import rule.ml.api.http.HTTPStatusCodes;
 import rule.ml.api.repository.Repository;
 import rule.ml.api.repository.Store;
-import rule.ml.api.util.Constants;
+import rule.ml.api.util.ServiceUtil;
 /**
  * Class which handles the {@link Request}s for repositories (Obtaining one or 
- * more repositories, update repositories, delete repositories). 
+ * more repositories, update repositories, etc). 
  * 
  * @author Adriana
  */
@@ -62,7 +65,7 @@ public class RepositoryService {
 			@DefaultValue("") @QueryParam("token") String token) throws Exception {
 		try {
 			// Set all the repositories for the current store
-			List<Repository> repositories = ExistDAO.getRepositories(storeID);
+			List<Repository> repositories = ExistDAO.getAllRepositories(storeID);
 			if (repositories.isEmpty()) {
 				throw new NotFoundException();
 			}
@@ -71,8 +74,10 @@ public class RepositoryService {
 			// Set the store object to the response
 			return Response.status(200).entity(store).build();
 		} catch (Exception e) {
+			e.printStackTrace();
+			
 			if (e instanceof XMLDBException) {
-				throw getException(((XMLDBException) e));
+				throw ServiceUtil.getException(((XMLDBException) e));
 			}
 			throw e;
 		}
@@ -101,6 +106,7 @@ public class RepositoryService {
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryID") String repositoryID,
 			@DefaultValue("") @QueryParam("token") String token) throws Exception {
+		System.out.println("4");
 		try {
 			// Set all the repositories for the current store
 			Repository repository = ExistDAO.getRepositoryWithID(storeID, repositoryID);
@@ -112,7 +118,7 @@ public class RepositoryService {
 			}
 		} catch (Exception e) {
 			if (e instanceof XMLDBException) {
-				throw getException(((XMLDBException) e));
+				throw ServiceUtil.getException(((XMLDBException) e));
 			}
 			throw e;
 		}
@@ -141,20 +147,28 @@ public class RepositoryService {
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryName") String repositoryName,
 			@DefaultValue("") @QueryParam("token") String token,
-			@DefaultValue("en") @HeaderParam("Accept-language") String language) throws Exception {
+			@Context HttpHeaders headers) throws Exception {
 		try {
 			// Set all the repositories for the current store
-			List<Repository> repositories = ExistDAO.getRepositoriesWithName(storeID, repositoryName, language);
+			List<Locale> acceptableLanguages = headers.getAcceptableLanguages();
+			String lang = "en";
+			if (!acceptableLanguages.isEmpty()) { 
+				Locale locale = acceptableLanguages.get(0);
+				lang = locale.getLanguage();
+			}
+			//TODO   Ar trebui lang + locale.getCountry() ????
+			List<Repository> repositories = ExistDAO.getRepositoriesWithName(storeID, repositoryName, lang);
 			if (repositories.isEmpty()) {
 				throw new NotFoundException();
 			}
 			Store store = new Store();
 			store.setRepos(repositories);
 			// Set the store object to the response
-			return Response.status(200).entity(store).build();
+			// TODO .language(lang) sa fie de string sau sa ii dau de Locale?
+			return Response.status(200).entity(store).language(lang).build();
 		} catch (Exception e) {
 			if (e instanceof XMLDBException) {
-				throw getException(((XMLDBException) e));
+				throw ServiceUtil.getException(((XMLDBException) e));
 			}
 			throw e;
 		}
@@ -195,16 +209,19 @@ public class RepositoryService {
 			@DefaultValue("") @QueryParam("token") String token,
 			@NotNull @QueryParam("name") String name,
 			@NotNull @QueryParam("description") String description,
-			@DefaultValue("en") @QueryParam("lang") String lang) throws Exception {
+			@DefaultValue("en-US") @QueryParam("lang") Locale lang) throws Exception {
+		System.out.println("2");
 		if (name == null || description == null) {
 			throw new BadRequestException();
 		}
 		String newReposRelativeURI = null;
 		try {
-			newReposRelativeURI = ExistDAO.createNewRepository(storeID, name, description, lang);
+			//TODO ? poate lang.getLanguage() + 
+			
+			newReposRelativeURI = ExistDAO.createNewRepository(storeID, name, description, lang.getLanguage());
 			if (newReposRelativeURI != null) {
 				ResponseBuilder builder = Response.status(HTTPStatusCodes.CREATED.getStatusCode());
-				builder.header("Location", Constants.urlPrefix + newReposRelativeURI);
+				builder.location(new URI(ServiceUtil.urlPrefix + newReposRelativeURI));
 				return builder.build();
 			} else {
 				throw new InternalServerErrorException("Resource could not be created");
@@ -212,7 +229,7 @@ public class RepositoryService {
 		} catch (Exception e) {
 			e.printStackTrace();
 			if (e instanceof XMLDBException) {
-				throw getException((XMLDBException) e);
+				throw ServiceUtil.getException((XMLDBException) e);
 			} else if (e instanceof NotFoundException) {
 				throw e;
 			}
@@ -232,42 +249,27 @@ public class RepositoryService {
 	@POST
 	@PUT
 	@DELETE
-	@Path("/{storeID}/repositories")
+	@Path("{var:.*}")
 	@Produces({MediaType.APPLICATION_JSON, "application/prolog"})
 	@Consumes ({MediaType.APPLICATION_JSON, "application/prolog"})
-	public Response getJSONRepresentation() {
+	public Response getOtherRepresentation() {
 		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).build();
 	}
 	
 	/**
-	 * Returns an exception for the error code from the given exception.
+	 * For JSON format requests, send a 501 Not Implemented message. 
 	 * 
-	 * @param e The initial exception.
-	 * 
-	 * @return An exception depending on the error code from the given exception.
+	 * @return A {@link Response} containing a 501 Not Implemented status code.
 	 */
-	private Exception getException(XMLDBException e) {
-		e.printStackTrace();
-		int errorCode = e.errorCode;
-		if (errorCode == ErrorCodes.VENDOR_ERROR ||
-				errorCode == ErrorCodes.COLLECTION_CLOSED ||
-				errorCode == ErrorCodes.UNKNOWN_ERROR) {
-			// DB not working
-			return new InternalServerErrorException();
-		} else if (errorCode == ErrorCodes.NO_SUCH_COLLECTION ||
-				errorCode == ErrorCodes.NO_SUCH_DATABASE ||
-				errorCode == ErrorCodes.NO_SUCH_RESOURCE ||
-				errorCode == ErrorCodes.NO_SUCH_SERVICE || 
-				errorCode == ErrorCodes.INVALID_COLLECTION ||
-				errorCode == ErrorCodes.INVALID_DATABASE ||
-				errorCode == ErrorCodes.INVALID_RESOURCE) {
-			// Resource not found or invalid
-			return new NotFoundException();
-		} else if (errorCode == ErrorCodes.INVALID_URI) {
-			return new BadRequestException();
-		} else {
-			// Unknown error code, so show an error
-			return e;
-		}
+	@GET
+	@POST
+	@PUT
+	@DELETE
+	@Path("/{storeID}/repositories/name/{name}")
+	@Produces({MediaType.APPLICATION_JSON, "application/prolog"})
+	@Consumes ({MediaType.APPLICATION_JSON, "application/prolog"})
+	public Response getJSONRepresentationName() {
+		System.out.println("1");
+		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).build();
 	}
 }

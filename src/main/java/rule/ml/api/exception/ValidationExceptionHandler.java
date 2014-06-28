@@ -7,7 +7,6 @@ import javax.ws.rs.ext.Provider;
 
 import org.hibernate.validator.method.MethodConstraintViolationException;
 
-@Provider
 public class ValidationExceptionHandler implements ExceptionMapper<MethodConstraintViolationException>
 {
     @Override

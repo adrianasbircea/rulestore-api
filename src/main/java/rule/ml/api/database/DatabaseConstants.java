@@ -4,7 +4,7 @@ public interface DatabaseConstants {
 	/**
 	 * XML Repository from the database.
 	 */
-	static final String URI = "xmldb:exist://localhost:8080/exist/xmlrpc";
+	static final String XML_RPC_URI = "xmldb:exist://localhost:8080/exist/xmlrpc";
 	/**
 	 * Property name for name.
 	 */

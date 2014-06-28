@@ -1,9 +1,10 @@
-package rule.ml.client;
+package rule.ml.client.main;
 
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,6 +18,10 @@ import java.util.Set;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+
+import rule.ml.client.component.ParameterPanel;
+import rule.ml.client.component.RequestPanel;
+import rule.ml.client.component.ResponsePanel;
 
 /**
  * Main panel for the client application.
@@ -57,20 +62,16 @@ public class MainPanel extends JPanel {
 		constr.gridwidth = 1;
 		constr.weightx = 0.5;
 		constr.weighty = 1.0;
-		constr.insets = new Insets(10, 20, 10, 10);
+		constr.insets = new Insets(25, 20, 10, 20);
+		JPanel p = new JPanel(new GridLayout(1, 2, 25, 5));
 		requestPanel = new RequestPanel();
-		add(requestPanel, constr);
+		p.add(requestPanel);
 		
-		constr.gridx ++;
-		constr.anchor = GridBagConstraints.WEST;
-		constr.fill = GridBagConstraints.BOTH;
-		constr.gridwidth = 1;
-		constr.weightx = 0.5;
-		constr.weighty = 1.0;
-		constr.insets = new Insets(10, 10, 10, 20);
 		responsePanel = new ResponsePanel();
-		add(responsePanel, constr);
+		p.add(responsePanel);
 		
+		add(p, constr);
+		urlPanel.requestFocusInWindow();
 		setPreferredSize(new Dimension(800, 400));
 		setVisible(true);
 	}
@@ -103,6 +104,7 @@ public class MainPanel extends JPanel {
 		if (urlString.length() > 0) {
 
 			URL url;
+			System.out.println("url |" + urlString + "|");
 			try {
 				url = new URL(urlString);
 				HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -128,72 +130,74 @@ public class MainPanel extends JPanel {
 				connection.setRequestMethod(urlPanel.getMethod());
 				
 				String requestBodyText = requestPanel.getRequestBody();
+				System.out.println("request body |" + "|");
 				if (requestBodyText.length() > 0) {
 					connection.setRequestProperty("Content-Length", Integer.toString(requestBodyText.length()));
 					connection.getOutputStream().write(requestBodyText.getBytes("UTF8"));
 				}
 				
-				System.out.println(connection);
 				// The response
 				String responseMessage = connection.getResponseMessage();
-				if (responseMessage != null) {
-					responsePanel.setStatus((String.valueOf(connection.getResponseCode()) + " " + responseMessage));
-				} else {
-					responsePanel.setStatus(String.valueOf(connection.getResponseCode()));
-				}
-				
-				Map<String, List<String>> headerFields = connection.getHeaderFields();
-				Set<String> headers = headerFields.keySet();
-				StringBuilder hds = new StringBuilder();
-				for (String headerKey : headers) {
-					if (headerKey != null) {
-						hds.append(headerKey).append(": ");
-						List<String> list = headerFields.get(headerKey);
-						for (int i = 0; i < list.size(); i++) {
-							hds.append(list.get(i));
-							hds.append("; ");
-						}
-						hds.append("\n");
-					}
-				}
-				
-				if (hds.length() > 0) {
-					responsePanel.setHeaders(hds.toString());
-				}
-				
-				
-				if (connection.getContentLength() > 0) {
-					in = new BufferedReader(
-							new InputStreamReader(connection.getInputStream()));
-					String inputLine;
-					StringBuilder body = new StringBuilder();
-					while ((inputLine = in.readLine()) != null) { 
-						body.append(inputLine).append("\n");
-					}
-					
-					if (body.length() > 0) {
-						responsePanel.setBodyContent(body.toString());
-					}
-				}
+				processResponse(in, connection, responseMessage);
 			} catch (MalformedURLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, "Invalid URL");
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			} finally {
 				if (in != null) {
 					try {
 						in.close();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
 					}
 				}
 			}
 		} else {
 			JOptionPane.showMessageDialog(this, "An URL must be provided!");
 		}
+	}
+
+	private BufferedReader processResponse(BufferedReader in,
+			HttpURLConnection connection, String responseMessage)
+			throws IOException {
+		if (responseMessage != null) {
+			responsePanel.setStatus((String.valueOf(connection.getResponseCode()) + " " + responseMessage));
+		} else {
+			responsePanel.setStatus(String.valueOf(connection.getResponseCode()));
+		}
+		
+		Map<String, List<String>> headerFields = connection.getHeaderFields();
+		Set<String> headers = headerFields.keySet();
+		StringBuilder hds = new StringBuilder();
+		for (String headerKey : headers) {
+			if (headerKey != null) {
+				hds.append(headerKey).append(": ");
+				List<String> list = headerFields.get(headerKey);
+				for (int i = 0; i < list.size(); i++) {
+					hds.append(list.get(i));
+					hds.append("; ");
+				}
+				hds.append("\n");
+			}
+		}
+		
+		if (hds.length() > 0) {
+			responsePanel.setHeaders(hds.toString());
+		}
+		
+		
+		if (connection.getContentLength() > 0) {
+			in = new BufferedReader(
+					new InputStreamReader(connection.getInputStream()));
+			String inputLine;
+			StringBuilder body = new StringBuilder();
+			while ((inputLine = in.readLine()) != null) { 
+				body.append(inputLine).append("\n");
+			}
+			
+			if (body.length() > 0) {
+				responsePanel.setBodyContent(body.toString());
+			}
+		}
+		return in;
 	}
 	
 	public void clear() {

@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.main;
 
 import java.io.File;
 
@@ -20,37 +20,35 @@ public class MainFrame extends JFrame {
 	 */
 	public MainFrame() {
 		super("Rulestore API Client");
-		
+
 		try {
-            // Set System L&F
-        UIManager.setLookAndFeel(
-            UIManager.getSystemLookAndFeelClassName());
-    } 
-    catch (UnsupportedLookAndFeelException e) {
-       // handle exception
-    }
-    catch (ClassNotFoundException e) {
-       // handle exception
-    }
-    catch (InstantiationException e) {
-       // handle exception
-    }
-    catch (IllegalAccessException e) {
-       // handle exception
-    }
-		
-		
+			// Set System L&F
+			UIManager.setLookAndFeel(
+					UIManager.getSystemLookAndFeelClassName());
+		} 
+		catch (UnsupportedLookAndFeelException e) {
+			// handle exception
+		}
+		catch (ClassNotFoundException e) {
+			// handle exception
+		}
+		catch (InstantiationException e) {
+			// handle exception
+		}
+		catch (IllegalAccessException e) {
+			// handle exception
+		}
+
 		ImageIcon imageIcon = new ImageIcon(new File("images/main_frame.png").getPath(), "desc");
 		setIconImage(imageIcon.getImage());
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
+
 		getContentPane().add(new MainPanel());
-		
+
 		pack();
 		setResizable(true);
 	}
-	
-	
+
 	public static void main(String[] args) {
 		MainFrame mainFrame = new MainFrame();
 		mainFrame.setVisible(true);

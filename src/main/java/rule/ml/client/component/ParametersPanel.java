@@ -1,12 +1,9 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -15,14 +12,13 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.AbstractButton;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.ButtonUI;
 
 /**
  * Panel which contains all the query parameters.
@@ -56,7 +52,7 @@ public class ParametersPanel extends JPanel {
 		addParamButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				addParameter(paramsPanel, constr);
+				addParameter(constr);
 				sp.revalidate();
 				sp.repaint();
 			}
@@ -69,41 +65,25 @@ public class ParametersPanel extends JPanel {
 		paramsPanel = new JPanel(new GridBagLayout());
 		paramsPanel.setOpaque(false);
 		sp = new JScrollPane(paramsPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, 
-		        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER) {
-			@Override
-			public Dimension getPreferredSize() {
-				int componentCount = getViewport().getComponentCount();
-				
-				return new Dimension(getSize().width, getComponentsSize((JComponent) getViewport().getComponent(0)));
-			}
-
-			private int getComponentsSize(JComponent parent) {
-				int height = parent.getSize().height;
-				
-				for (int i = 0; i < parent.getComponentCount(); i++) {
-					height += getComponentsSize((JComponent) parent.getComponent(i)); 
-				}
-				
-				return height;
-			}
-		};
+		        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		sp.setOpaque(false);
 		sp.getViewport().setOpaque(false);
 		sp.setBorder(new EmptyBorder(0, 0, 0, 0));
-		
+		ThinScrollBarUI thinScrollBarUI = new ThinScrollBarUI();
+		JScrollBar verticalScrollBar = sp.getVerticalScrollBar();
+		verticalScrollBar.setUI(thinScrollBarUI);
+		verticalScrollBar.setBackground(Color.WHITE);
 		constr = new GridBagConstraints();
 		constr.gridx = 0;
 		constr.gridy = 0;
 		constr.anchor = GridBagConstraints.NORTHWEST;
 		constr.insets = new Insets(5, 0, 0, 5);
-		addParameter(paramsPanel, constr);
+		addParameter(constr);
 		
 		sp.revalidate();
 		sp.repaint();
 		constr.gridy ++;
 		add(sp, BorderLayout.CENTER);
-		
-//		setOpaque(false);
 	}
 	
 	/**
@@ -112,8 +92,8 @@ public class ParametersPanel extends JPanel {
 	 * @param paramsPanel 	The panel containing all the parameters.
 	 * @param constr 		The {@link GridBagConstraints} object.
 	 */
-	private void addParameter(final JPanel paramsPanel, GridBagConstraints constr) {
-		paramsPanel.remove(jLabel);
+	private void addParameter(GridBagConstraints constr) {
+//		paramsPanel.remove(jLabel);
 		
 		constr.fill = GridBagConstraints.HORIZONTAL;
 		constr.weightx = 1.0;
@@ -138,9 +118,9 @@ public class ParametersPanel extends JPanel {
 		btn.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				paramsPanel.remove(p);
 				params.remove(parameterPanel);
-				paramsPanel.repaint();
+				paramsPanel.remove(p);
+				paramsPanel.updateUI();
 				sp.repaint();
 			}
 		});
@@ -163,5 +143,6 @@ public class ParametersPanel extends JPanel {
 		
 		paramsPanel.validate();
 		paramsPanel.repaint();
+		parameterPanel.requestFocus();
 	}
 }

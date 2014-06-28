@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -7,16 +7,32 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
+import javafx.scene.web.WebEngine;
+
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
+import javax.swing.JTextPane;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 
-public class ContentArea extends JPanel {
+import xmleditorkit.XMLEditorKit;
 
-	JTextArea area = new JTextArea();
+/**
+ * Panel for the content of the response/request.
+ *  
+ * @author Adriana
+ */
+public class ContentArea extends JPanel {
+	boolean installContentTypeKit = false;
+	JEditorPane area = new JEditorPane();
+	
+	SwingBrowser browser = new SwingBrowser();
+	
 	private JLabel statusCodeLabel;
 	private String label;
 	private JLabel contentLabel;
@@ -24,8 +40,9 @@ public class ContentArea extends JPanel {
 	private JSeparator contentSeparator;
 	private JSeparator statusSeparator;
 	
-	public ContentArea(String label, boolean editable, boolean addStatusLabel) {
+	public ContentArea(String label, boolean editable, boolean addStatusLabel, boolean installKit) {
 		this.label = label;
+		installContentTypeKit = installKit;
 		setOpaque(false);
 		setLayout(new GridBagLayout());
 		GridBagConstraints constr = new GridBagConstraints();
@@ -37,7 +54,7 @@ public class ContentArea extends JPanel {
 		constr.gridwidth = 1;
 		constr.weightx = 0.0;
 		constr.weighty = 0.0;
-		constr.insets = new Insets(10, 5, 5, 10);
+		constr.insets = new Insets(10, 5, 0, 10);
 		
 		if (addStatusLabel) {
 			statusLabel = new JLabel("");
@@ -96,15 +113,27 @@ public class ContentArea extends JPanel {
 		constr.weightx = 1.0;
 		constr.weighty = 1.0;
 		constr.insets = new Insets(1, 2, 1, 5);
-		area.setLineWrap(true);
-		area.setRows(7);
+		area.setFont(new Font("Sans serif", area.getFont().getStyle(), area.getFont().getSize() + 1));
 		area.setEditable(editable);
 		area.setForeground(Color.BLACK);
 		area.setMinimumSize(new Dimension(500, 40));
+		
+		
+		
 		JScrollPane sp = new JScrollPane(
-				area, 
+				installKit ? browser : area, 
 				JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, 
 				JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		if (installKit) {
+			browser.setVisible(true);
+//			area.setEditorKitForContentType("text/xml", new XMLEditorKit());
+//			area.setContentType("text/xml");
+		}
+		ThinScrollBarUI thinScrollBarUI = new ThinScrollBarUI();
+		JScrollBar verticalScrollBar = sp.getVerticalScrollBar();
+		verticalScrollBar.setUI(thinScrollBarUI);
+		verticalScrollBar.setBackground(Color.WHITE);
+		sp.setBorder(new EmptyBorder(0, 0, 0, 0));
 		add(sp, constr);
 	}
 	
@@ -117,20 +146,29 @@ public class ContentArea extends JPanel {
 	}
 	
 	public void setContent(String content) {
+		System.out.println("content " + content);
 		contentLabel.setText(label);
-		area.setText(content);
+		if (installContentTypeKit) {
+			browser.loadContent(content);
+		} else {
+			area.setText(content);
+			area.setCaretPosition(0);
+		}
+		
 		contentSeparator.setVisible(true);
 	}
 
 	public void clear() {
 		if (statusCodeLabel != null) {
 			statusLabel.setText("");
+			area.setText("");
+			browser.loadContent("");
 			statusCodeLabel.setText("");
 			statusSeparator.setVisible(false);
 		}
 		
 		contentLabel.setText("");
-		area.setText("");
+		area.setCaretPosition(0);
 		contentSeparator.setVisible(false);
 	}
 }

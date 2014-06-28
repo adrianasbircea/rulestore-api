@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -22,11 +22,11 @@ public class URLConnectionReader {
 		ruleMLConn.setRequestMethod("GET");
 		BufferedReader in = new BufferedReader(
 				new InputStreamReader(ruleMLConn.getInputStream()));
-		System.out.println("getHeaderField(0) " + ruleMLConn.getHeaderField(0));
+//		System.out.println("getHeaderField(0) " + ruleMLConn.getHeaderField(0));
 		String inputLine;
 
 		while ((inputLine = in.readLine()) != null) 
-			System.out.println(inputLine);
+//			System.out.println(inputLine);
 		in.close();
 	
 	}
@@ -45,10 +45,10 @@ public class URLConnectionReader {
 		String inputLine;
 
 		while ((inputLine = in.readLine()) != null)  {
-			System.out.println(inputLine);
+//			System.out.println(inputLine);
 		}
 		} catch (Throwable e) {
-			System.out.println("eee " + e.getMessage());
+//			System.out.println("eee " + e.getMessage());
 			e.printStackTrace();
 		} finally {
 			if (in != null) {

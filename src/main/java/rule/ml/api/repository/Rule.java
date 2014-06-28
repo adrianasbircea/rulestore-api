@@ -1,4 +1,4 @@
-package rule.ml.api.rule;
+package rule.ml.api.repository;
 
 import java.net.URI;
 import java.util.ArrayList;

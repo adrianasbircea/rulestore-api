@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -73,7 +73,7 @@ public class RequestPanel extends JPanel {
 		headerParamsPanel = new ParametersPanel("Headers");
 		fields.addTab("Headers", headerParamsPanel);
 		// Content 
-		contentArea = new ContentArea("Content", true, false);
+		contentArea = new ContentArea("Content", true, false, false);
 		fields.addTab("Body", contentArea);
 		add(fields, BorderLayout.CENTER);
 	}

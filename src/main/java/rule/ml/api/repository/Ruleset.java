@@ -4,36 +4,32 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
-
-import rule.ml.api.rule.Rule;
 
 /**
  * Class representing a RuleML ruleset.
  * 
  * @author Adriana
  */
-@XmlRootElement(name="ruleset")
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.PROPERTY)
 public class Ruleset {
 	/**
 	 * The ID of the ruleset. It also represents the ruleset's URI.
 	 */
-	private URI id;
+	private String id;
 
 	/**
-	 * Ruleset's name.
+	 * Repository's name.
 	 */
-	private String name;
-
+	private Name name;
 	/**
 	 * The description of the ruleset.
 	 */
 	private String description;
-	/**
-	 * The metadata of the ruleset. A ruleset can have at most one metadata.
-	 */
-	private String metadata;
 	/**
 	 * The rules from the ruleset. A ruleset can have 0 or more rules.
 	 */
@@ -52,7 +48,7 @@ public class Ruleset {
 	 * @param name 			Represent the name of the ruleset.
 	 * @param description 	The ruleset's description.
 	 */
-	public Ruleset(URI id, String name, String description) {
+	public Ruleset(String id, Name name, String description) {
 		this.id = id;
 		this.name = name;
 		this.description = description;
@@ -64,18 +60,31 @@ public class Ruleset {
 	 * @return The rule's URI or ID.
 	 */
 	@XmlElement(name="ID")
-	public URI getId() {
+	public String getId() {
 		return id;
+	}
+	
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	/**
-	 * Obtain the rule name.
+	 * Obtain the ruleset name.
 	 * 
-	 * @return The name of the rule.
+	 * @return The name of the ruleset.
 	 */
 	@XmlElement(name="name")
-	public String getName() {
+	public Name getName() {
 		return name;
+	}
+	
+	/**
+	 * Set the repository's name.
+	 * 
+	 * @param name The new name of the repository.
+	 */
+	public void setName(Name name) {
+		this.name = name;
 	}
 
 	/**
@@ -88,22 +97,8 @@ public class Ruleset {
 		return description;
 	}
 	
-	/**
-	 * Obtain the rule metadata.
-	 * 
-	 * @return The rule's metadata.
-	 */
-	public String getMetadata() {
-		return metadata;
-	}
-
-	/**
-	 * Set the new metadata of the rule.
-	 * 
-	 * @param metadata The new metadata object.
-	 */
-	public void setMetadata(String metadata) {
-		this.metadata = metadata;
+	public void setDescription(String description) {
+		this.description = description;
 	}
 	
 	/**
@@ -135,5 +130,10 @@ public class Ruleset {
 		if (rules != null) {
 			this.rules = rules;
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return "ID: " + id;
 	}
 }

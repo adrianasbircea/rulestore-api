@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.Color;
 import java.awt.Font;

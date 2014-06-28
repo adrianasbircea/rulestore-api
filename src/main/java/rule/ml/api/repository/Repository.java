@@ -6,9 +6,8 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlRootElement;
-
-import rule.ml.api.rule.Rule;
 
 /**
  * Class representing a RuleML repository.
@@ -122,10 +121,12 @@ public class Repository {
 	 * 
 	 * @return A copy of the list with rulesets.
 	 */
-//	@XmlElement(name="rulesets")
-//	public List<Ruleset> getRulesets() {
-//		return new ArrayList<Ruleset>(rulesets);
-//	}
+	@XmlElements(value = { 
+			@XmlElement(name="ruleset", 
+			type=Ruleset.class) })
+	public List<Ruleset> getRulesets() {
+		return rulesets;
+	}
 
 	/**
 	 * Set the rulesets of the repository.
@@ -179,5 +180,11 @@ public class Repository {
 		if (newRuleset != null) {
 			rulesets.add(newRuleset);
 		}
+	}
+	
+	@Override
+	public String toString() {
+		// TODO Auto-generated method stub
+		return "ID: " + id + " rulesets: " + rulesets;
 	}
 }

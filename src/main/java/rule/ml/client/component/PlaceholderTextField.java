@@ -1,4 +1,4 @@
-package rule.ml.client;
+package rule.ml.client.component;
 
 import java.awt.Font;
 import java.awt.Graphics;
@@ -9,17 +9,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.text.Document;
 
+/**
+ * Class representing a text field with placeholder.
+ * 
+ * @author Adriana
+ */
+@SuppressWarnings("serial")
 public class PlaceholderTextField extends JTextField {
 
-    public static void main(final String[] args) {
-        final PlaceholderTextField tf = new PlaceholderTextField("");
-        tf.setColumns(20);
-        tf.setPlaceholder("All your base are belong to us!");
-        final Font f = tf.getFont();
-        tf.setFont(new Font(f.getName(), f.getStyle(), 30));
-        JOptionPane.showMessageDialog(null, tf);
-    }
-
+	/**
+	 * The placeholder string.
+	 */
     private String placeholder;
 
     public PlaceholderTextField() {

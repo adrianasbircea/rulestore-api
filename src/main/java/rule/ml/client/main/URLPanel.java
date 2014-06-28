@@ -1,5 +1,5 @@
-package rule.ml.client;
-import java.awt.Color;
+package rule.ml.client.main;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -15,7 +15,6 @@ import javax.swing.JTextField;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.plaf.basic.BasicComboBoxEditor;
 
 /**
  * Panel for the URL.
@@ -24,39 +23,23 @@ import javax.swing.plaf.basic.BasicComboBoxEditor;
  */
 @SuppressWarnings("serial")
 public class URLPanel extends JPanel {
-
-	private class MyComboBoxEditor extends BasicComboBoxEditor {
-		public MyComboBoxEditor() {
-			this.editor = new JTextField("", 9) {
-				public void setText(String paramString) {
-					if (getText().equals(paramString))
-						return;
-					super.setText(paramString);
-				}
-
-				public Dimension getPreferredSize() {
-					Dimension localDimension = super.getPreferredSize();
-					localDimension.height += 4;
-					return localDimension;
-				}
-
-				public Dimension getMinimumSize() {
-					Dimension localDimension = super.getMinimumSize();
-					localDimension.height += 4;
-					return localDimension;
-				}
-			};
-			this.editor.setBorder(new EmptyBorder(0, 0, 0, 0));
-			editor.setBackground(Color.BLACK);
-		}
-	};
+	/**
+	 * The parent panel.
+	 */
 	private MainPanel mainPanel;
+	/**
+	 * Combo which presents the HTPP methods.
+	 */
 	private JComboBox methodCombo;
+	/**
+	 * The input field for the URL.
+	 */
 	private JTextField urlTxtField;
-
+	
 	public URLPanel(MainPanel mainPanel) {
 		this.mainPanel = mainPanel;
 		
+		// Method combobox
 		setLayout(new GridBagLayout());
 		GridBagConstraints constr = new GridBagConstraints();
 		constr.gridx = 0;
@@ -67,20 +50,10 @@ public class URLPanel extends JPanel {
 		constr.weightx = 0.0;
 		constr.weighty = 1.0;
 		constr.insets = new Insets(0, 0, 0, 0);
-		
-		methodCombo = new JComboBox(new String[] {"GET", "POST", "DELETE"});
-		
-		methodCombo.setEditor(new MyComboBoxEditor());
-		
-		int componentCount = methodCombo.getComponentCount();
-		for (int i = 0; i < componentCount; i++) {
-			System.out.println(methodCombo.getComponent(i).getClass());
-			if (methodCombo.getComponent(i) instanceof JButton) {
-				((JButton)methodCombo.getComponent(i)).setBorderPainted(false);
-			}
-		}
+		methodCombo = new JComboBox(new String[] {"GET", "POST", "PUT", "DELETE"});
 		add(methodCombo, constr);
 		
+		// URL text field
 		urlTxtField = new JTextField();
 		urlTxtField.setPreferredSize(new Dimension(100, urlTxtField.getPreferredSize().height));
 		urlTxtField.setBorder(new CompoundBorder(new LineBorder(MainPanel.COLOR.darker(), 1), new EmptyBorder(2, 7, 2, 2)));
@@ -92,13 +65,21 @@ public class URLPanel extends JPanel {
 		constr.weighty = 1.0;
 		add(urlTxtField, constr);
 		
+		// Button to send the request
 		JButton sendBtn = new JButton("SEND");
 		sendBtn.addActionListener(new ActionListener() {
 			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				URLPanel.this.mainPanel.clear();
-				URLPanel.this.mainPanel.sendRequest();
-				
+			public void actionPerformed(ActionEvent event) {
+				Cursor initialCursor = URLPanel.this.mainPanel.getCursor();
+				try {
+					// Set a wait cursor while the response is received
+					URLPanel.this.mainPanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+					URLPanel.this.mainPanel.clear();
+					URLPanel.this.mainPanel.sendRequest();
+				} finally {
+					URLPanel.this.mainPanel.setCursor(initialCursor);
+				}
+
 			}
 		});
 		
@@ -110,6 +91,7 @@ public class URLPanel extends JPanel {
 		add(sendBtn, constr);
 		setMinimumSize(new Dimension(300, 30));
 		setPreferredSize(new Dimension(300, 30));
+		urlTxtField.requestFocusInWindow();
 	}
 	
 	/**

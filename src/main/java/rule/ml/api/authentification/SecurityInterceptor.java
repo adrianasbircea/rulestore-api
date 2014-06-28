@@ -35,9 +35,9 @@ public class SecurityInterceptor implements ContainerRequestFilter {
 		MultivaluedMap<String,String> pathParameters = requestContext.getUriInfo().getQueryParameters();
 		Object[] array = pathParameters.keySet().toArray();
 		for (int i = 0; i < array.length; i++) {
-			System.out.println("-- " + array[i] + " " + pathParameters.get(array[i]));
+//			System.out.println("-- " + array[i] + " " + pathParameters.get(array[i]));
 		}
-        System.out.println("filter");
+//        System.out.println("filter");
 //        //Fetch authorization header
 //        final List<String> authorization = headers.get(AUTHORIZATION_PROPERTY);
 //         
