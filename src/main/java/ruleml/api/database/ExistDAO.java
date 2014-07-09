@@ -29,8 +29,10 @@ import org.xmldb.api.base.XMLDBException;
 import org.xmldb.api.modules.CollectionManagementService;
 import org.xmldb.api.modules.XMLResource;
 
+import ruleml.api.exception.PreconditionRequiredException;
 import ruleml.api.repository.Name;
 import ruleml.api.repository.Repository;
+import ruleml.api.repository.Rule;
 import ruleml.api.repository.Ruleset;
 import ruleml.api.util.IDUtil;
 
@@ -48,6 +50,7 @@ public class ExistDAO {
 	 * The password used to login into the DB.
 	 */
 	private static final String DB_PASSWORD = "root";
+	private static Resource currentRule;
 
 	/**
 	 * Creates a new repository.
@@ -78,10 +81,7 @@ public class ExistDAO {
 					}
 
 					// Create an xml document with info for the current collection
-					XMLResource info = createXMLResource(newRepos, COLLECTION_PROPERTIES_FILE, createDOMInfo(name, description, language));
-					if (info == null) {
-						//TODO Throw an error or ignore ?
-					}
+					createXMLInfoResource(newRepos, COLLECTION_PROPERTIES_FILE, createDOMInfo(name, description, language));
 				}
 
 				return newRepositoryURI;
@@ -136,7 +136,7 @@ public class ExistDAO {
 	 * 
 	 * @throws XMLDBException If the resource could not be created.
 	 */
-	private static XMLResource createXMLResource(Collection col, String name, Element element) throws XMLDBException {
+	private static XMLResource createXMLInfoResource(Collection col, String name, Element element) throws XMLDBException {
 		// create new XMLResource; an id will be assigned to the new 
 		//resource
 		XMLResource res = null;
@@ -310,6 +310,7 @@ public class ExistDAO {
 			}
 		}
 
+		System.out.println("return from get all repos");
 		return repos;
 	}
 
@@ -479,7 +480,7 @@ public class ExistDAO {
 				
 				boolean continueLoop = true;
 				if (currentName != null) {
-					if ((language == null && "en".equals(lang) || language.equals(lang)) && 
+					if (/*(language == null && "en".equals(lang) || language.equals(lang)) &&*/ 
 							currentName.equals(repositoryName)) {
 						continueLoop = false;
 						Name nameElem = new Name();
@@ -667,10 +668,7 @@ public class ExistDAO {
 					}
 
 					// Create an xml document with info for the current collection
-					XMLResource info = createXMLResource(newRuleset, COLLECTION_PROPERTIES_FILE, createDOMInfo(name, description, language));
-					if (info == null) {
-						//TODO Throw an error or ignore ?
-					}
+					createXMLInfoResource(newRuleset, COLLECTION_PROPERTIES_FILE, createDOMInfo(name, description, language));
 				}
 
 				return newRepositoryURI;
@@ -1044,8 +1042,9 @@ public class ExistDAO {
 				String currentRulesetID = childCollections[i];
 				// Found the searched repository
 				if (rulesetID.equals(currentRulesetID)) {
+					List<Rule> currentRules = null;
+					
 					Collection currentRuleset = repository.getChildCollection(currentRulesetID);
-//					collections.add(currentRuleset);
 					ruleset = new Ruleset();
 					ruleset.setId(currentRulesetID);
 
@@ -1105,19 +1104,387 @@ public class ExistDAO {
 					
 					
 					// Copy all rules from the ruleset to the repository
-					String[] rules = currentRuleset.listChildCollections();
+					String[] rules = currentRuleset.listResources();
 					// Se obtin toate resursele si se retine continutul 
 					for (int j = 0; j < rules.length; j++) {
+						if (j == 0) {
+							currentRules = new ArrayList<Rule>();
+						}
 						String ruleID = rules[j];
-						// Found the searched repository
-						XMLResource rule = (XMLResource) currentRuleset.getResource(ruleID);
-						Node contentAsDOM = rule.getContentAsDOM();
-						createXMLResource(repository, ruleID, (Element) contentAsDOM);
+						//========================================================
+						Rule rule = new Rule();
 						
+						nameElem = null;
+						xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+								+ "return data($x)"; 
+						// Execute the query, print the result 
+						result = service.query(xQuery); 
+						it = result.getIterator(); 
+						if (it.hasMoreResources()) { 
+							Resource r = it.nextResource();
+							Object content = r.getContent();
+							if (content instanceof String && ((String) content).length() > 0) {
+								nameElem = new Name();
+								nameElem.setName((String) content);
+							}
+						}
+						// Get the description
+						xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+								+ "return data($x)"; 
+						// Execute the query, print the result 
+						result = service.query(xQuery); 
+						it = result.getIterator(); 
+						if (it.hasMoreResources()) { 
+							Resource r = it.nextResource();
+							Object content = r.getContent();
+							if (content instanceof String && ((String) content).length() > 0) {
+								rule.setDescription((String) content);
+							}
+						}
+
+						// Get the language
+						xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+								+ "return data($x)"; 
+						// Execute the query, print the result 
+						result = service.query(xQuery); 
+						it = result.getIterator(); 
+						if (it.hasMoreResources()) { 
+							Resource r = it.nextResource();
+							Object content = r.getContent();
+							if (content instanceof String && ((String) content).length() > 0 &&
+									nameElem != null) {
+								nameElem.setLanguage((String) content);
+							}
+						}
+						
+						if (nameElem != null) {
+							rule.setName(nameElem);
+						}
+						
+						//========================================================
+						
+						currentRules.add(rule);
 						
 					}					
-					// Delete the repository
+					if (currentRules != null) {
+						ruleset.setRules(currentRules);
+					}
+					// Delete the ruleset
+					
+					CollectionManagementService mgt = 
+							(CollectionManagementService) repository.getService("CollectionManagementService", "1.0");
+					mgt.removeCollection(rulesetID);
+					
 					break;
+				}
+				
+			}
+			
+			
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+		}
+
+		if (ruleset == null) {
+			throw new PreconditionRequiredException();
+		}
+		
+		return ruleset;
+		
+	}
+
+	public static String createNewRule(String storeID, String reposID,
+			String name, String description, String language, String xmlContent) throws Exception {
+		String newRepositoryURI = null;
+		Collection repository = null;
+		XMLResource newRule = null;
+	
+		try {    
+			DBConnection.initConnection();
+			// Get the store with the given ID
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (repository != null) {
+
+				// Create a new collection which will represent the new repository
+				String ruleID = IDUtil.generateID();
+				newRule = createXMLResource(repository, ruleID, name, description, language, xmlContent);
+				System.out.println("new rule " + newRule);
+				if (newRule != null) {
+					newRepositoryURI = storeID + "/repositories/" + reposID + "/rules/" + ruleID;
+				}
+
+				return newRepositoryURI;
+			} else {
+				throw new NotFoundException("Store with ID " + storeID + " could not be found.");
+			}
+		} finally {
+			if(repository != null) {
+				repository.close(); 
+			}
+		}
+	}
+
+	private static XMLResource createXMLResource(Collection collection, String ruleID,
+			String name, String description, String language, String xmlContent) throws Exception {
+		
+		Document document = DocumentBuilderFactory
+				.newInstance()
+				.newDocumentBuilder()
+				.parse(new ByteArrayInputStream("<rule/>".getBytes()));
+		Element root =  document
+				.getDocumentElement();
+
+		Element nameElem = document.createElement(DatabaseConstants.NAME_PROPERTY);
+		nameElem.setTextContent(name);
+		root.appendChild(nameElem);
+
+		Element descElem = document.createElement(DatabaseConstants.DESCRIPTION_PROPERTY);
+		descElem.setTextContent(description);
+		root.appendChild(descElem);
+
+		Element langElem = document.createElement(DatabaseConstants.LANGUAGE_PROPERTY);
+		langElem.setTextContent(language);
+		root.appendChild(langElem);
+		
+		Node importNode = document.importNode(getNodeElements(xmlContent), true);
+		Element content = document.createElement(DatabaseConstants.RULE_CONTENT);
+		content.appendChild(importNode);
+		root.appendChild(content);
+		XMLResource res = null;
+		try {
+			res = (XMLResource)collection.createResource(ruleID, "XMLResource");
+			res.setContentAsDOM(root);
+			collection.storeResource(res);
+			return res;
+		} finally {
+			if (res != null) {
+				((EXistResource)res).freeResources();
+			}
+		}
+	}
+	
+	private static Node getNodeElements(String xmlContent) throws Exception {
+		Document document = DocumentBuilderFactory
+				.newInstance()
+				.newDocumentBuilder()
+				.parse(new ByteArrayInputStream(xmlContent.getBytes()));
+		
+		return document.getDocumentElement();
+	}
+
+	public static List<Rule> getAllRules(String storeID, String reposID) throws Exception {
+		List<Rule> rules = new ArrayList<Rule>();
+		List<Collection> collections = new ArrayList<Collection>();
+		List<XMLResource> resources = new ArrayList<XMLResource>();
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			Collection repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (repository == null) {
+				throw new NotFoundException("Collection could not be found");
+			}
+			collections.add(repository);
+			String[] childResources = repository.listResources();
+			for (int i = 0; i < childResources.length; i++) {
+				String ruleID = childResources[i];
+
+				if (!COLLECTION_PROPERTIES_FILE.equals(ruleID)) {
+					XMLResource currentRuleset = (XMLResource) repository.getResource(ruleID);
+					resources.add(currentRuleset);
+					Rule rule = new Rule();
+					rule.setId(ruleID);
+
+					// Query the info.xml document 
+					// Instantiate a XQuery service 
+					XQueryService service = (XQueryService) repository.getService("XQueryService", 
+							"1.0"); 
+					service.setProperty("indent", "yes"); 
+
+					// Get the name
+					String currentName = null;
+					String xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					ResourceSet result = service.query(xQuery); 
+					ResourceIterator it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							currentName = (String) content;
+						}
+					}
+
+					// Get the language
+					String language = null;
+					xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							language = (String) content;
+						}
+					}
+
+
+					if (currentName != null) {
+						Name nameElem = new Name();
+						nameElem.setName(currentName);
+						nameElem.setLanguage(language != null ? language : "en");
+						rule.setName(nameElem);
+					}
+
+					// Get the description
+					String description = null;
+					xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							description = (String) content;
+							rule.setDescription(description);
+						}
+					}
+
+					if (description != null) {
+						rule.setDescription(description);
+					}
+
+					rules.add(rule);
+				}
+
+			}
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+
+		}
+
+		return rules;
+	}
+
+	public static Rule getRuleWithID(String storeID, String repositoryID,
+			String ruleID) throws Exception {
+		Rule rule = null;
+		List<Collection> collections = new ArrayList<Collection>();
+		Collection repository = null;
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + repositoryID;
+			repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (repository == null) {
+				throw new NotFoundException("Collection could not be found");
+			}
+			collections.add(repository);
+			String[] childResources = repository.listResources();
+			for (int i = 0; i < childResources.length; i++) {
+				String currentRuleID = childResources[i];
+				// Found the searched repository
+				if (ruleID.equals(currentRuleID)) {
+					rule = new Rule();
+					rule.setId(currentRuleID);
+
+					// Query the info.xml document 
+					// Instantiate a XQuery service 
+					XQueryService service = (XQueryService) repository.getService("XQueryService", 
+							"1.0"); 
+					service.setProperty("indent", "yes"); 
+
+					// Get the name
+					Name nameElem = null;
+					String xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					ResourceSet result = service.query(xQuery); 
+					ResourceIterator it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							nameElem = new Name();
+							nameElem.setName((String) content);
+						}
+					}
+					// Get the description
+					xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							rule.setDescription((String) content);
+						}
+					}
+
+					// Get the language
+					xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0 &&
+								nameElem != null) {
+							nameElem.setLanguage((String) content);
+						}
+					}
+					
+					if (nameElem != null) {
+						rule.setName(nameElem);
+					}
+					
+					
+					xQuery = "for $x in doc('" + ruleID + "')//rule/content/*" 
+							+ "return $x"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							rule.setXmlContent((String) content);
+						}
+					}
 				}
 			}
 		} finally {
@@ -1135,7 +1502,684 @@ public class ExistDAO {
 			}
 		}
 
-		return ruleset;
+		return rule;
+	}
+
+	public static List<Rule> getRulesWithName(String storeID, String reposID,
+			String ruleName, String lang) throws Exception {
+		List<Rule> rules = new ArrayList<Rule>();
+		List<Collection> collections = new ArrayList<Collection>();
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			Collection repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (repository == null) {
+				throw new NotFoundException("Collection could not be found");
+			}
+			collections.add(repository);
+			String[] childResources = repository.listResources();
+			for (int i = 0; i < childResources.length; i++) {
+				String ruleID = childResources[i];
+				Rule rule = new Rule();
+				rule.setId(ruleID);
+
+				// Query the info.xml document 
+				// Instantiate a XQuery service 
+				XQueryService service = (XQueryService) repository.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				String currentName = null;
+				String xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				ResourceSet result = service.query(xQuery); 
+				ResourceIterator it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						currentName = (String) content;
+					}
+				}
+
+				// Get the language
+				String language = null;
+				xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						language = (String) content;
+					}
+				}
+				
+				boolean continueLoop = true;
+				if (currentName != null) {
+					if (/*(language == null && "en".equals(lang) || language.equals(lang)) &&*/ 
+							currentName.equals(ruleName)) {
+						continueLoop = false;
+						Name nameElem = new Name();
+						nameElem.setName(currentName);
+						nameElem.setLanguage(language != null ? language : "en");
+						rule.setName(nameElem);
+					}
+				}
+				if (continueLoop) {
+					continue;
+				}
+				
+				// Get the description
+				xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						rule.setDescription((String) content);
+					}
+				}
+
+				rules.add(rule);
+			}
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+		}
+
+		return rules;
+	}
+
+	public static List<Rule> getAllRulesMatchString(String storeID,
+			String reposID, String searchString) throws Exception {
+		List<Rule> rules = new ArrayList<Rule>();
+		List<Collection> collections = new ArrayList<Collection>();
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			Collection repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (repository == null) {
+				throw new NotFoundException("Collection could not be found");
+			}
+			collections.add(repository);
+			String[] childResources = repository.listResources();
+			for (int i = 0; i < childResources.length; i++) {
+				String ruleID = childResources[i];
+				Rule rule = new Rule();
+				rule.setId(ruleID);
+
+				// Query the info.xml document 
+				// Instantiate a XQuery service 
+				XQueryService service = (XQueryService) repository.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				String currentName = null;
+				String xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				ResourceSet result = service.query(xQuery); 
+				ResourceIterator it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						currentName = (String) content;
+					}
+				}
+
+				// Get the language
+				String language = null;
+				xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						language = (String) content;
+					}
+				}
+				
+				boolean continueLoop = true;
+				
+				// Get the description
+				String description = null;
+				xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						description = (String) content;
+						rule.setDescription(description);
+					}
+				}
+				
+				
+				if (description != null) {
+					if (/*(language == null && "en".equals(lang) || language.equals(lang)) &&*/ 
+							description.contains(searchString)) {
+						continueLoop = false;
+						Name nameElem = new Name();
+						nameElem.setName(currentName);
+						nameElem.setLanguage(language != null ? language : "en");
+						rule.setName(nameElem);
+						rule.setDescription(description);
+					}
+				}
+				
+				if (continueLoop) {
+					continue;
+				}
+
+				rules.add(rule);
+			}
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+		}
+
+		return rules;
+	}
+
+	public static Object deleteRule(String storeID, String reposID,
+			String rulesetID, String ruleID) throws Exception {
+		List<Collection> collections = new ArrayList<Collection>();
+		Collection repository = null;
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			if (rulesetID != null) {
+				Ruleset ruleset = null;
+				String relPathToRuleset = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID + "/" + rulesetID;
+				Collection rulesetCol = DatabaseManager.getCollection(
+						DatabaseConstants.XML_RPC_URI + relPathToRuleset, DB_USER, DB_PASSWORD);
+				if (repository == null || rulesetCol == null) {
+					throw new NotFoundException("Collection could not be found");
+				}
+				collections.add(repository);
+				collections.add(rulesetCol);
+
+				// Get information about the current ruleset
+				ruleset = new Ruleset();
+				ruleset.setId(rulesetID);
+
+				// Query the info.xml document 
+				// Instantiate a XQuery service 
+				XQueryService service = (XQueryService) rulesetCol.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				Name nameElem = null;
+				String xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				ResourceSet result = service.query(xQuery); 
+				ResourceIterator it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						nameElem = new Name();
+						nameElem.setName((String) content);
+					}
+				}
+				// Get the description
+				xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						ruleset.setDescription((String) content);
+					}
+				}
+
+				// Get the language
+				xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0 &&
+							nameElem != null) {
+						nameElem.setLanguage((String) content);
+					}
+				}
+
+				if (nameElem != null) {
+					ruleset.setName(nameElem);
+				}
+				
+				Rule rule = new Rule();
+				rule.setId(ruleID);
+
+				// Query the info.xml document 
+				// Instantiate a XQuery service 
+				service = (XQueryService) rulesetCol.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				nameElem = null;
+				xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						nameElem = new Name();
+						nameElem.setName((String) content);
+					}
+				}
+				// Get the description
+				xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						rule.setDescription((String) content);
+					}
+				}
+
+				// Get the language
+				xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0 &&
+							nameElem != null) {
+						nameElem.setLanguage((String) content);
+					}
+				}
+				
+				if (nameElem != null) {
+					rule.setName(nameElem);
+				}
+				ruleset.addRule(rule);
+				return ruleset;
+			} else {
+				Repository repositoryObj = new Repository();
+				repositoryObj.setId(reposID);
+				XQueryService service = (XQueryService) repository.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				Name nameElem = null;
+				String xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				ResourceSet result = service.query(xQuery); 
+				ResourceIterator it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						nameElem = new Name();
+						nameElem.setName((String) content);
+					}
+				}
+				// Get the description
+				xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						repositoryObj.setDescription((String) content);
+					}
+				}
+
+				// Get the language
+				xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0 &&
+							nameElem != null) {
+						nameElem.setLanguage((String) content);
+					}
+				}
+
+				if (nameElem != null) {
+					repositoryObj.setName(nameElem);
+				}
+				
+				Rule rule = new Rule();
+				rule.setId(ruleID);
+
+				// Query the info.xml document 
+				// Instantiate a XQuery service 
+				service = (XQueryService) repository.getService("XQueryService", 
+						"1.0"); 
+				service.setProperty("indent", "yes"); 
+
+				// Get the name
+				nameElem = null;
+				xQuery = "for $x in doc('" + ruleID + "')//rule//name " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						nameElem = new Name();
+						nameElem.setName((String) content);
+					}
+				}
+				// Get the description
+				xQuery = "for $x in doc('" + ruleID + "')//rule//description " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0) {
+						rule.setDescription((String) content);
+					}
+				}
+
+				// Get the language
+				xQuery = "for $x in doc('" + ruleID + "')//rule//lang " 
+						+ "return data($x)"; 
+				// Execute the query, print the result 
+				result = service.query(xQuery); 
+				it = result.getIterator(); 
+				if (it.hasMoreResources()) { 
+					Resource r = it.nextResource();
+					Object content = r.getContent();
+					if (content instanceof String && ((String) content).length() > 0 &&
+							nameElem != null) {
+						nameElem.setLanguage((String) content);
+					}
+				}
+				
+				if (nameElem != null) {
+					rule.setName(nameElem);
+				}
+				
+				ArrayList<Rule> rules = new ArrayList<Rule>();
+				rules.add(rule);
+//				repositoryObj.setRules(rules);
+				
+				System.out.println("repositoryObj " + repositoryObj);
+				return repositoryObj;
+			}
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+		}
+	}
+
+	public static Ruleset addRuleToRuleset(String storeID, String reposID,
+			String rulesetID, String ruleID) throws Exception {
+		
+		Ruleset ruleset = null;
+		
+		List<Collection> collections = new ArrayList<Collection>();
+		Collection repository = null;
+		Collection rulesetCol = null;
+		try {    
+			// Initialize the database connection
+			DBConnection.initConnection();
+			// Get the store collection
+			String relPathToRepository = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID;
+			repository = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRepository, DB_USER, DB_PASSWORD);
+			String relPathToRuleset = DatabaseConstants.ROOT_NAME + storeID + "/" + reposID + "/" + rulesetID;
+			rulesetCol = DatabaseManager.getCollection(DatabaseConstants.XML_RPC_URI + relPathToRuleset, DB_USER, DB_PASSWORD);
+			if (repository == null || rulesetCol == null) {
+				throw new NotFoundException("Collection could not be found");
+			}
+			collections.add(repository);
+			collections.add(rulesetCol);
+			
+			// Get information about the current ruleset
+			ruleset = new Ruleset();
+			ruleset.setId(rulesetID);
+
+			// Query the info.xml document 
+			// Instantiate a XQuery service 
+			XQueryService service = (XQueryService) rulesetCol.getService("XQueryService", 
+					"1.0"); 
+			service.setProperty("indent", "yes"); 
+
+			// Get the name
+			Name nameElem = null;
+			String xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//name " 
+					+ "return data($x)"; 
+			// Execute the query, print the result 
+			ResourceSet result = service.query(xQuery); 
+			ResourceIterator it = result.getIterator(); 
+			if (it.hasMoreResources()) { 
+				Resource r = it.nextResource();
+				Object content = r.getContent();
+				if (content instanceof String && ((String) content).length() > 0) {
+					nameElem = new Name();
+					nameElem.setName((String) content);
+				}
+			}
+			// Get the description
+			xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//description " 
+					+ "return data($x)"; 
+			// Execute the query, print the result 
+			result = service.query(xQuery); 
+			it = result.getIterator(); 
+			if (it.hasMoreResources()) { 
+				Resource r = it.nextResource();
+				Object content = r.getContent();
+				if (content instanceof String && ((String) content).length() > 0) {
+					ruleset.setDescription((String) content);
+				}
+			}
+
+			// Get the language
+			xQuery = "for $x in doc('" + COLLECTION_PROPERTIES_FILE + "')//info//lang " 
+					+ "return data($x)"; 
+			// Execute the query, print the result 
+			result = service.query(xQuery); 
+			it = result.getIterator(); 
+			if (it.hasMoreResources()) { 
+				Resource r = it.nextResource();
+				Object content = r.getContent();
+				if (content instanceof String && ((String) content).length() > 0 &&
+						nameElem != null) {
+					nameElem.setLanguage((String) content);
+				}
+			}
+			
+			if (nameElem != null) {
+				ruleset.setName(nameElem);
+			}
+			
+			currentRule = repository.getResource(ruleID);
+			
+			if (currentRule == null) {
+				throw new PreconditionRequiredException();
+			}
+			
+			// Store the rule to the ruleset
+			rulesetCol.storeResource(currentRule);
+			
+			List<Rule> rulesFromRuleset = new ArrayList<Rule>();
+			
+			String[] childResources = repository.listResources();
+			for (int i = 0; i < childResources.length; i++) {
+				nameElem = null;
+				String currentRuleID = childResources[i];
+
+				if (!COLLECTION_PROPERTIES_FILE.equals(currentRuleID)) {
+					Rule rule = new Rule();
+					rule.setId(currentRuleID);
+
+					// Query the info.xml document 
+					// Instantiate a XQuery service 
+					service = (XQueryService) rulesetCol.getService("XQueryService", 
+							"1.0"); 
+					service.setProperty("indent", "yes"); 
+
+					// Get the name
+					String currentName = null;
+					xQuery = "for $x in doc('" + currentRuleID + "')//rule//name " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							currentName = (String) content;
+						}
+					}
+
+					// Get the language
+					String language = null;
+					xQuery = "for $x in doc('" + currentRuleID + "')//rule//lang " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							language = (String) content;
+						}
+					}
+
+
+					if (currentName != null) {
+						nameElem = new Name();
+						nameElem.setName(currentName);
+						nameElem.setLanguage(language != null ? language : "en");
+						rule.setName(nameElem);
+					}
+
+					// Get the description
+					String description = null;
+					xQuery = "for $x in doc('" + currentRuleID + "')//rule//description " 
+							+ "return data($x)"; 
+					// Execute the query, print the result 
+					result = service.query(xQuery); 
+					it = result.getIterator(); 
+					if (it.hasMoreResources()) { 
+						Resource r = it.nextResource();
+						Object content = r.getContent();
+						if (content instanceof String && ((String) content).length() > 0) {
+							description = (String) content;
+							rule.setDescription(description);
+						}
+					}
+
+					if (description != null) {
+						rule.setDescription(description);
+					}
+
+					rulesFromRuleset.add(rule);
+				}
+
+			}
+			
+			ruleset.setRules(rulesFromRuleset);
+					
+			return ruleset;
+		} finally {
+			// Clean up!
+			if(!collections.isEmpty()) {
+				for (int i = 0; i < collections.size(); i++) {
+					try { 
+						if (collections.get(i) != null) {
+							collections.get(i).close(); 
+						}
+					} catch(XMLDBException ex) {
+						throw ex;
+					}
+				}
+			}
+		}
+		
 		
 	}
 }

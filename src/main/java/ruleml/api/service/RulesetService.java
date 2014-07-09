@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
 import org.jboss.resteasy.plugins.validation.hibernate.ValidateRequest;
+import org.jboss.resteasy.spi.MethodNotAllowedException;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.XMLDBException;
 
@@ -219,6 +220,7 @@ public class RulesetService {
 	@POST
 	@Path("/{storeID}/repositories/{reposID}/rulesets")
 	@ValidateRequest
+	@Produces("application/xml")
 	public Response createNewRuleset(
 			@PathParam("storeID") String storeID,
 			@PathParam("reposID") String reposID,
@@ -342,6 +344,7 @@ public class RulesetService {
 	 */
 	@DELETE
 	@Path("/{storeID}/repositories/{reposID}/rulesets/{rulesetID}")
+	@Produces("application/xml")
 	public Response deleteRuleset(
 			@PathParam("storeID") String storeID,
 			@PathParam("reposID") String repositoryID,
@@ -368,5 +371,15 @@ public class RulesetService {
 			
 			throw new InternalServerErrorException(e);
 		}
+	}
+	
+	@GET
+	@POST
+	@PUT
+	@DELETE
+	@Path("{var:.*}")
+	@Produces("application/xml")
+	public Response getMethodNotAllowed() {
+		throw new MethodNotAllowedException("");
 	}
 }

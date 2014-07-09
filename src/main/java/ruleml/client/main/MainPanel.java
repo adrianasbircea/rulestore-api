@@ -7,6 +7,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -80,6 +81,7 @@ public class MainPanel extends JPanel {
 	 * Send the request
 	 */
 	public void sendRequest() {
+		DataOutputStream wr = null;
 		BufferedReader in = null;
 		// Obtain the URL
 		String urlString = urlPanel.getURL();
@@ -109,6 +111,10 @@ public class MainPanel extends JPanel {
 				url = new URL(urlString);
 				HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 				
+				connection.setDoOutput(true);
+				connection.setDoInput(true);
+				connection.setInstanceFollowRedirects(false); 
+				
 				// Request Headers
 				List<ParameterPanel> requestHeaders = requestPanel.getHeadersParams();
 				boolean headerAdd = false;
@@ -128,12 +134,14 @@ public class MainPanel extends JPanel {
 
 				// Method
 				connection.setRequestMethod(urlPanel.getMethod());
-				
 				String requestBodyText = requestPanel.getRequestBody();
-				System.out.println("request body |" + "|");
+				System.out.println("request body |" + requestBodyText + "|");
 				if (requestBodyText.length() > 0) {
 					connection.setRequestProperty("Content-Length", Integer.toString(requestBodyText.length()));
 					connection.getOutputStream().write(requestBodyText.getBytes("UTF8"));
+//					wr = new DataOutputStream(connection.getOutputStream ());
+//					wr.writeBytes(requestBodyText);
+//					wr.flush();
 				}
 				
 				// The response
@@ -142,7 +150,17 @@ public class MainPanel extends JPanel {
 			} catch (MalformedURLException e) {
 				JOptionPane.showMessageDialog(this, "Invalid URL");
 			} catch (IOException e) {
+				e.printStackTrace();
 			} finally {
+				
+				if (wr != null) {
+					try {
+						wr.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 				if (in != null) {
 					try {
 						in.close();
@@ -158,6 +176,7 @@ public class MainPanel extends JPanel {
 	private BufferedReader processResponse(BufferedReader in,
 			HttpURLConnection connection, String responseMessage)
 			throws IOException {
+		System.out.println("response " + responseMessage);
 		if (responseMessage != null) {
 			responsePanel.setStatus((String.valueOf(connection.getResponseCode()) + " " + responseMessage));
 		} else {

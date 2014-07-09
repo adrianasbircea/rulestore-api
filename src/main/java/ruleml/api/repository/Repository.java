@@ -150,23 +150,12 @@ public class Repository {
 	}
 
 	/**
-	 * Add a new rule to the rules list.
-	 * 
-	 * @param newRule The rule to add.
-	 */
-	public void addRule(Rule newRule) {
-		if (newRule != null) {
-			rules.add(newRule);
-		}
-	}
-	
-	/**
 	 * Set the rules of the repository.
 	 * 
 	 * @param rules The list of new rules.
 	 */
 	public void setRules(List<Rule> rules) {
-		if (rules != null) {
+		if (rules != null && !rules.isEmpty()) {
 			this.rules = rules;
 		}
 	}

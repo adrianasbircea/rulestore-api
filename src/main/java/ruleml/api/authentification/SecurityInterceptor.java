@@ -1,19 +1,25 @@
 package ruleml.api.authentification;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.Provider;
 
+import org.apache.commons.io.IOUtils;
 import org.jboss.resteasy.core.Headers;
 import org.jboss.resteasy.core.ServerResponse;
 import org.jboss.resteasy.util.Base64;
 
 import ruleml.api.database.ExistDAO;
+import ruleml.api.service.RuleService;
 
 /**
  * This interceptor verifies the access permissions for a user based on username 
@@ -31,12 +37,22 @@ public class SecurityInterceptor implements ContainerRequestFilter {
 	
 	@Override
 	public void filter(ContainerRequestContext requestContext) throws IOException {
-		final MultivaluedMap<String, String> headers = requestContext.getHeaders();
-		MultivaluedMap<String,String> pathParameters = requestContext.getUriInfo().getQueryParameters();
-		Object[] array = pathParameters.keySet().toArray();
-		for (int i = 0; i < array.length; i++) {
+		
+		
+		InputStream entityStream = requestContext.getEntityStream();
+		StringWriter writer = new StringWriter();
+		IOUtils.copy(entityStream, writer);
+		RuleService.xmlContent = writer.toString();
+//		System.out.println("Path " + requestContext.getUriInfo().getPath() +
+//				" Base URI " + requestContext.getUriInfo().getBaseUri() + 
+//				" Matched URIs " + requestContext.getUriInfo().getRequestUri());
+//		
+//		final MultivaluedMap<String, String> headers = requestContext.getHeaders();
+//		MultivaluedMap<String,String> pathParameters = requestContext.getUriInfo().getQueryParameters();
+//		Object[] array = pathParameters.keySet().toArray();
+//		for (int i = 0; i < array.length; i++) {
 //			System.out.println("-- " + array[i] + " " + pathParameters.get(array[i]));
-		}
+//		}
 //        System.out.println("filter");
 //        //Fetch authorization header
 //        final List<String> authorization = headers.get(AUTHORIZATION_PROPERTY);

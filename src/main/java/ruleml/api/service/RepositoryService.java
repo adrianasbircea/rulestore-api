@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
 import org.jboss.resteasy.plugins.validation.hibernate.ValidateRequest;
+import org.jboss.resteasy.spi.MethodNotAllowedException;
 import org.xmldb.api.base.ErrorCodes;
 import org.xmldb.api.base.XMLDBException;
 
@@ -59,7 +60,7 @@ public class RepositoryService {
 	 */
 	@GET
 	@Path("/{storeID}/repositories")
-	@Produces(MediaType.APPLICATION_XML)
+	@Produces("application/xml")
 	public Response getAllRepositories(
 			@PathParam("storeID") String storeID,
 			@DefaultValue("") @QueryParam("token") String token) throws Exception {
@@ -74,6 +75,7 @@ public class RepositoryService {
 			Store store = new Store();
 			store.setRepos(repositories);
 			// Set the store object to the response
+			System.out.println("return from get all repos service");
 			return Response.status(200).entity(store).build();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -102,8 +104,8 @@ public class RepositoryService {
 	 * @throws Exception If one of the specified errors occurred. 
 	 */
 	@GET
-	@Produces(MediaType.APPLICATION_XML)
 	@Path("/{storeID}/repositories/{repositoryID}")
+	@Produces("application/xml")
 	public Response getRepositoryByID(
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryID") String repositoryID,
@@ -112,6 +114,7 @@ public class RepositoryService {
 		try {
 			// Set all the repositories for the current store
 			Repository repository = ExistDAO.getRepositoryWithID(storeID, repositoryID);
+			System.out.println("000000000000000 " + repository);
 			if (repository != null) {
 				// Set the repository object to the response
 				return Response.status(200).entity(repository).build();
@@ -144,7 +147,7 @@ public class RepositoryService {
 	 */
 	@GET
 	@Path("/{storeID}/repositories/name/{repositoryName}")
-	@Produces(MediaType.APPLICATION_XML)
+	@Produces("application/xml")
 	public Response getRepositoryByName(
 			@PathParam("storeID") String storeID,
 			@PathParam("repositoryName") String repositoryName,
@@ -158,7 +161,6 @@ public class RepositoryService {
 				Locale locale = acceptableLanguages.get(0);
 				lang = locale.getLanguage();
 			}
-			//TODO   Ar trebui lang + locale.getCountry() ????
 			List<Repository> repositories = ExistDAO.getRepositoriesWithName(storeID, repositoryName, lang);
 			if (repositories.isEmpty()) {
 				throw new NotFoundException();
@@ -166,9 +168,9 @@ public class RepositoryService {
 			Store store = new Store();
 			store.setRepos(repositories);
 			// Set the store object to the response
-			// TODO .language(lang) sa fie de string sau sa ii dau de Locale?
 			return Response.status(200).entity(store).language(lang).build();
 		} catch (Exception e) {
+			e.printStackTrace();
 			if (e instanceof XMLDBException) {
 				throw ServiceUtil.getException(((XMLDBException) e));
 			}
@@ -206,6 +208,7 @@ public class RepositoryService {
 	@POST
 	@Path("/{storeID}/repositories")
 	@ValidateRequest
+	@Produces("application/xml")
 	public Response createNewRepository(
 			@PathParam("storeID") String storeID,
 			@DefaultValue("") @QueryParam("token") String token,
@@ -218,8 +221,6 @@ public class RepositoryService {
 		}
 		String newReposRelativeURI = null;
 		try {
-			//TODO ? poate lang.getLanguage() + 
-			
 			newReposRelativeURI = ExistDAO.createNewRepository(storeID, name, description, lang.getLanguage());
 			if (newReposRelativeURI != null) {
 				ResponseBuilder builder = Response.status(HTTPStatusCodes.CREATED.getStatusCode());
@@ -238,10 +239,17 @@ public class RepositoryService {
 			
 			throw new InternalServerErrorException(e);
 		}
-
-		
 	}
 
+	@GET
+	@POST
+	@PUT
+	@DELETE
+	@Path("{var:.*}")
+	public Response getMethodNotAllowed() {
+		throw new MethodNotAllowedException("");
+	}
+	
 	/**
 	 * For JSON format requests, send a 501 Not Implemented message. 
 	 * 
@@ -255,23 +263,6 @@ public class RepositoryService {
 	@Produces({MediaType.APPLICATION_JSON, "application/prolog"})
 	@Consumes ({MediaType.APPLICATION_JSON, "application/prolog"})
 	public Response getOtherRepresentation() {
-		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).build();
-	}
-	
-	/**
-	 * For JSON format requests, send a 501 Not Implemented message. 
-	 * 
-	 * @return A {@link Response} containing a 501 Not Implemented status code.
-	 */
-	@GET
-	@POST
-	@PUT
-	@DELETE
-	@Path("/{storeID}/repositories/name/{name}")
-	@Produces({MediaType.APPLICATION_JSON, "application/prolog"})
-	@Consumes ({MediaType.APPLICATION_JSON, "application/prolog"})
-	public Response getJSONRepresentationName() {
-		System.out.println("1");
 		return Response.status(HTTPStatusCodes.NOT_IMPLEMENTED.getStatusCode()).build();
 	}
 }

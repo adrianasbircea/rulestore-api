@@ -18,6 +18,10 @@ public interface DatabaseConstants {
 	 */
 	static final String DESCRIPTION_PROPERTY = "description";
 	/**
+	 * Property name a rule content.
+	 */
+	static final String RULE_CONTENT = "content";
+	/**
 	 * The root of the eXist collections.
 	 */
 	static final String ROOT_NAME = "/db/";
