@@ -23,6 +23,7 @@ import javax.swing.JPanel;
 import ruleml.client.component.ParameterPanel;
 import ruleml.client.component.RequestPanel;
 import ruleml.client.component.ResponsePanel;
+import ruleml.client.util.ClientUtil;
 
 /**
  * Main panel for the client application.
@@ -100,7 +101,7 @@ public class MainPanel extends JPanel {
 		
 		// Add the query parameters to the URL
 		if (urlString.length() > 0 && sb.toString().trim().length() > 0) {
-			urlString += "?" + sb.toString();
+			urlString += "?" + ClientUtil.correctURL(sb.toString());
 		}
 		
 		if (urlString.length() > 0) {

@@ -121,20 +121,22 @@ public class ContentArea extends JPanel {
 		
 		
 		JScrollPane sp = new JScrollPane(
-				installKit ? browser : area, 
+				area, 
 				JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, 
 				JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		if (installKit) {
 			browser.setVisible(true);
-//			area.setEditorKitForContentType("text/xml", new XMLEditorKit());
-//			area.setContentType("text/xml");
 		}
 		ThinScrollBarUI thinScrollBarUI = new ThinScrollBarUI();
 		JScrollBar verticalScrollBar = sp.getVerticalScrollBar();
 		verticalScrollBar.setUI(thinScrollBarUI);
 		verticalScrollBar.setBackground(Color.WHITE);
 		sp.setBorder(new EmptyBorder(0, 0, 0, 0));
-		add(sp, constr);
+		if (installKit) {
+			add(browser, constr);
+		} else {
+			add(sp, constr);
+		}
 	}
 	
 	public void setStatus(String statusValue) {
@@ -162,11 +164,11 @@ public class ContentArea extends JPanel {
 		if (statusCodeLabel != null) {
 			statusLabel.setText("");
 			area.setText("");
-			browser.loadContent("");
 			statusCodeLabel.setText("");
 			statusSeparator.setVisible(false);
 		}
 		
+		browser.loadContent("<html></html>");
 		contentLabel.setText("");
 		area.setCaretPosition(0);
 		contentSeparator.setVisible(false);

@@ -1,9 +1,5 @@
 package ruleml.api.repository;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
@@ -100,8 +96,9 @@ public class Rule {
 	 * 
 	 * @return The content.
 	 */
-	@XmlElement(name="content")
+	@XmlElement()
 	public String getXmlContent() {
+		System.out.println("xmlContent " + xmlContent);
 		return xmlContent;
 	}
 	

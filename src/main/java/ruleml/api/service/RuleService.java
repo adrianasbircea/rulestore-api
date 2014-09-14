@@ -24,10 +24,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
 
 import org.jboss.resteasy.plugins.validation.hibernate.ValidateRequest;
 import org.jboss.resteasy.spi.MethodNotAllowedException;
 import org.xmldb.api.base.XMLDBException;
+
+import com.sun.xml.bind.marshaller.CharacterEscapeHandler;
 
 import ruleml.api.database.ExistDAO;
 import ruleml.api.exception.PreconditionRequiredException;
@@ -35,6 +39,7 @@ import ruleml.api.http.HTTPStatusCodes;
 import ruleml.api.repository.Repository;
 import ruleml.api.repository.Rule;
 import ruleml.api.repository.Ruleset;
+import ruleml.api.util.NoEscapeHandler;
 import ruleml.api.util.ServiceUtil;
 /**
  * Class which handles the {@link Request}s for repositories (Obtaining one or 
@@ -220,6 +225,7 @@ public class RuleService {
 			
 			repository.setRules(rules);
 			// Set the store object to the response
+                     
 			return Response.status(200).entity(repository).language(lang).build();
 		} catch (Exception e) {
 			if (e instanceof XMLDBException) {

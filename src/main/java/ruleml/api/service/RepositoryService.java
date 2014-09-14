@@ -64,18 +64,15 @@ public class RepositoryService {
 	public Response getAllRepositories(
 			@PathParam("storeID") String storeID,
 			@DefaultValue("") @QueryParam("token") String token) throws Exception {
-		System.out.println("??????????????????????");
 		try {
 			// Set all the repositories for the current store
 			List<Repository> repositories = ExistDAO.getAllRepositories(storeID);
-			System.out.println("----------");
 			if (repositories.isEmpty()) {
 				throw new NotFoundException();
 			}
 			Store store = new Store();
 			store.setRepos(repositories);
 			// Set the store object to the response
-			System.out.println("return from get all repos service");
 			return Response.status(200).entity(store).build();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -215,7 +212,6 @@ public class RepositoryService {
 			@NotNull @QueryParam("name") String name,
 			@NotNull @QueryParam("description") String description,
 			@DefaultValue("en-US") @QueryParam("lang") Locale lang) throws Exception {
-		System.out.println("2");
 		if (name == null || description == null) {
 			throw new BadRequestException();
 		}
